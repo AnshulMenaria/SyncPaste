@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SyncPaste | Shared Clipboard</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Highlight.js for Code Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- App Wrapper -->
+  <div class="app-container">
+    
+    <!-- Top Navbar -->
+    <header class="app-header">
+      <div class="logo-area">
+        <div class="logo-icon">
+          <i data-lucide="share-2"></i>
+        </div>
+        <div class="logo-text">
+          <h1>Sync<span>Paste</span></h1>
+          <p>Seamless Clipboard Link</p>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <!-- Room Status Badge -->
+        <div class="room-status-wrapper" id="roomStatusBtn">
+          <span class="status-indicator online"></span>
+          <span class="room-label">Room:</span>
+          <span class="room-name" id="currentRoomDisplay">...</span>
+          <i data-lucide="settings" class="settings-icon"></i>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+      <div class="grid-layout">
+        
+        <!-- Left Column: Paste Creator Form -->
+        <section class="creator-section glass-panel">
+          <div class="panel-header">
+            <h2 class="panel-title"><i data-lucide="plus-circle"></i> Create Paste</h2>
+            <div class="device-badge" id="deviceBadge">
+              <i data-lucide="laptop"></i>
+              <span id="currentDeviceDisplay">My Device</span>
+            </div>
+          </div>
+          
+          <form id="pasteForm" class="paste-form">
+            <!-- Content Textarea -->
+            <div class="textarea-wrapper">
+              <textarea 
+                id="pasteContent" 
+                placeholder="Paste code snippets, shell scripts, prompt templates, queries, or raw text here..." 
+                required
+              ></textarea>
+              <button type="button" class="clear-textarea-btn" id="clearTextareaBtn" title="Clear Content">
+                <i data-lucide="x"></i>
+              </button>
+            </div>
+
+            <!-- Content Customizations -->
+            <div class="form-row">
+              <!-- Type Selector -->
+              <div class="input-group">
+                <label for="pasteType">Content Type</label>
+                <div class="type-pills-container">
+                  <button type="button" class="type-pill active" data-type="text">
+                    <i data-lucide="align-left"></i> Text
+                  </button>
+                  <button type="button" class="type-pill" data-type="code">
+                    <i data-lucide="code-2"></i> Code
+                  </button>
+                  <button type="button" class="type-pill" data-type="prompt">
+                    <i data-lucide="bot"></i> Prompt
+                  </button>
+                  <button type="button" class="type-pill" data-type="link">
+                    <i data-lucide="link"></i> Link
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Code Language Dropdown (Hidden by default, shown when Code pill selected) -->
+            <div class="form-row hidden" id="languageSelectorRow">
+              <div class="input-group">
+                <label for="pasteLanguage">Language Syntax</label>
+                <div class="select-wrapper">
+                  <select id="pasteLanguage">
+                    <option value="plaintext">Plain Text</option>
+                    <option value="javascript">JavaScript / TypeScript</option>
+                    <option value="python">Python</option>
+                    <option value="bash">Bash / Shell</option>
+                    <option value="html">HTML</option>
+                    <option value="css">CSS</option>
+                    <option value="json">JSON</option>
+                    <option value="sql">SQL</option>
+                    <option value="yaml">YAML / Markdown</option>
+                    <option value="dockerfile">Dockerfile</option>
+                  </select>
+                  <i data-lucide="chevron-down" class="select-arrow"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Submit Action Button -->
+            <button type="submit" class="submit-btn" id="submitBtn">
+              <span>Send to Room</span>
+              <i data-lucide="send"></i>
+            </button>
+          </form>
+        </section>
+
+        <!-- Right Column: Clipboard Feed -->
+        <section class="feed-section glass-panel">
+          <div class="panel-header">
+            <h2 class="panel-title"><i data-lucide="clipboard-list"></i> Shared Clipboard Feed</h2>
+            <div class="feed-controls">
+              <!-- Sync Status -->
+              <div class="sync-indicator" id="syncIndicator" title="Last synced time">
+                <i data-lucide="refresh-cw" class="spin"></i>
+                <span id="syncStatusText">Syncing...</span>
+              </div>
+              <button class="icon-btn" id="refreshBtn" title="Sync Feed Now">
+                <i data-lucide="rotate-cw"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Feed Content -->
+          <div class="feed-container">
+            <!-- Search & Filter Row -->
+            <div class="search-bar">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" id="feedSearch" placeholder="Search pastes by content, language, or device...">
+              <button class="clear-search-btn hidden" id="clearSearchBtn">
+                <i data-lucide="x"></i>
+              </button>
+            </div>
+
+            <!-- Dynamic Paste List -->
+            <div class="paste-list" id="pasteList">
+              <!-- Paste items will be dynamically injected here -->
+              
+              <!-- Loader State -->
+              <div class="feed-loader" id="feedLoader">
+                <div class="spinner"></div>
+                <p>Loading clipboard items...</p>
+              </div>
+
+              <!-- Empty State -->
+              <div class="feed-empty hidden" id="feedEmpty">
+                <div class="empty-icon-wrapper">
+                  <i data-lucide="clipboard"></i>
+                </div>
+                <h3>Room is Empty</h3>
+                <p>Submit text or code from this laptop or another device connected to Room <strong class="empty-room-code">...</strong> to see it here.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer-bar">
+      <p>&copy; 2026 SyncPaste. Encrypted locally &bull; Shared instantly.</p>
+    </footer>
+  </div>
+
+  <!-- Room Config Modal -->
+  <div class="modal-overlay hidden" id="configModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title"><i data-lucide="sliders"></i> Room & Device Settings</h3>
+        <button class="modal-close" id="closeModalBtn"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Room Code Config -->
+        <div class="modal-field">
+          <label for="modalRoomInput">Active Room Code</label>
+          <p class="field-desc">Use the same room code on all laptops to link their clipboards together.</p>
+          <div class="input-with-button">
+            <input type="text" id="modalRoomInput" placeholder="e.g. workspace-alpha" autocomplete="off" spellcheck="false">
+            <button class="btn btn-primary" id="saveRoomBtn">Connect</button>
+          </div>
+        </div>
+
+        <hr class="modal-divider">
+
+        <!-- Device Name Config -->
+        <div class="modal-field">
+          <label for="modalDeviceInput">This Device Name</label>
+          <p class="field-desc">Used to identify which laptop submitted each item (e.g. "Server Laptop", "Personal PC").</p>
+          <div class="input-with-button">
+            <input type="text" id="modalDeviceInput" placeholder="e.g. Server Laptop" autocomplete="off">
+            <button class="btn btn-secondary" id="saveDeviceBtn">Save Name</button>
+          </div>
+        </div>
+
+        <hr class="modal-divider">
+
+        <!-- Sync interval Config -->
+        <div class="modal-field">
+          <label for="syncIntervalSelect">Background Sync Rate</label>
+          <p class="field-desc">How frequently this page fetches new clipboard pastes automatically.</p>
+          <div class="select-wrapper">
+            <select id="syncIntervalSelect">
+              <option value="2000">Every 2 seconds (Fast)</option>
+              <option value="5000" selected>Every 5 seconds (Recommended)</option>
+              <option value="10000">Every 10 seconds</option>
+              <option value="30000">Every 30 seconds</option>
+              <option value="0">Manual Sync Only</option>
+            </select>
+            <i data-lucide="chevron-down" class="select-arrow"></i>
+          </div>
+        </div>
+
+        <hr class="modal-divider">
+
+        <!-- Dangerous actions -->
+        <div class="modal-field">
+          <label>Dangerous Actions</label>
+          <div class="actions-row">
+            <button class="btn btn-danger" id="clearRoomDataBtn">
+              <i data-lucide="trash-2"></i> Clear Room Feed
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Frontend Javascript Logic -->
+  <script src="app.js"></script>
+</body>
+</html>

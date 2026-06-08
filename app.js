@@ -332,6 +332,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (paste.type === 'code') {
         bodyHTML += `
           <div class="code-container">
+            <button class="code-copy-btn" data-action="code-copy" title="Copy Code Block">
+              <i data-lucide="copy"></i>
+            </button>
             <pre><code class="language-${paste.language}">${escapeHTML(paste.content)}</code></pre>
           </div>
         `;
@@ -415,6 +418,28 @@ document.addEventListener('DOMContentLoaded', () => {
           showToast('Unable to copy', 'error');
         }
       });
+
+      // Copy Action (Floating Code Block Copy)
+      const codeCopyBtn = card.querySelector('.code-copy-btn');
+      if (codeCopyBtn) {
+        codeCopyBtn.addEventListener('click', async () => {
+          const success = await copyToClipboard(pasteData.content);
+          if (success) {
+            codeCopyBtn.classList.add('copied');
+            codeCopyBtn.innerHTML = '<i data-lucide="check"></i>';
+            if (window.lucide) lucide.createIcons();
+            showToast('Copied code block!', 'success');
+            
+            setTimeout(() => {
+              codeCopyBtn.classList.remove('copied');
+              codeCopyBtn.innerHTML = '<i data-lucide="copy"></i>';
+              if (window.lucide) lucide.createIcons();
+            }, 2000);
+          } else {
+            showToast('Unable to copy', 'error');
+          }
+        });
+      }
 
       // Delete Action
       const deleteBtn = card.querySelector('.delete-btn');

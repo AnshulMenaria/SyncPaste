@@ -799,6 +799,8 @@ select:focus {
 /* Card Body Content */
 .card-body {
   padding: 1rem;
+  max-height: 280px;
+  overflow-y: auto;
 }
 
 .text-content {
@@ -854,6 +856,41 @@ select:focus {
   position: relative;
   border-radius: var(--radius-sm);
   background: #282c34 !important; /* Forces atom-one-dark base */
+}
+
+.code-copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  z-index: 10;
+  transition: all var(--transition-fast);
+}
+
+.code-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.code-copy-btn.copied {
+  background: var(--success-glow) !important;
+  border-color: var(--success) !important;
+  color: var(--success) !important;
+}
+
+.code-copy-btn i {
+  width: 14px;
+  height: 14px;
 }
 
 pre {

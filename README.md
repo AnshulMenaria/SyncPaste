@@ -10,7 +10,9 @@ It operates completely serverless when hosted on Netlify, using **Netlify Functi
 
 *   **Room Code Isolation:** Group your devices by a secure room passcode (e.g., `anshu-sync`). Only devices sharing the exact room passcode will sync pastes.
 *   **Auto-Sync / Polling:** Real-time synchronization (adjustable interval: 2s, 5s, 10s, or manual) that fetches changes in the background without manual refreshes.
-*   **One-Click Copy:** Copies snippets directly to the system clipboard with an automatic fallback mechanism for older server browsers.
+*   **Per-Item Scrollers:** Very long paste items (like large script files or prompts) are capped at `280px` height with their own scrollbars. The header (device info) and footer (action buttons) remain pinned and visible at all times.
+*   **Dual Copy Actions:** Copy your content using either the card footer "Copy" button or the quick-access floating copy button located directly in the top-right corner of code blocks.
+*   **No Word Limits:** You can copy-paste large codes, queries, and long text blocks (up to 1MB per paste) with no arbitrary character or length limits.
 *   **Syntax Highlighting:** Formats and highlights code using `Highlight.js` (Atom One Dark theme) for easy readability.
 *   **Device Identification:** Label your submissions (e.g. `Server Laptop`, `Personal PC`) to track where each paste originated.
 *   **Zero-Dependency Local Dev:** Runs a mock backend locally out of the box with standard Node.js libraries.
@@ -24,13 +26,13 @@ It operates completely serverless when hosted on Netlify, using **Netlify Functi
 │   └── pastes.json           
 ├── netlify/                  
 │   └── functions/            
-│       └── api.js            # Netlify Serverless Function (Handles GET, POST, DELETE via Blobs)
+│       └── paste.js          # Netlify Serverless Function (Handles GET, POST, DELETE via Upstash/Blobs)
 ├── app.js                    # Frontend logic (polling, clipboard action, settings, and renders)
 ├── index.html                # Semantic HTML skeleton and CDN links (Lucide Icons, Highlight.js)
 ├── netlify.toml              # Netlify build configurations
 ├── package.json              # Project script runner and production dependencies
 ├── server.js                 # Mock HTTP local server for development (file-system based storage)
-├── style.css                 # Premium CSS styling (glassmorphism, dark layout, animations)
+├── style.css                 # Premium CSS styling (glassmorphism, dark layout, animations, scrollbars)
 └── README.md                 # Documentation
 ```
 
@@ -41,7 +43,7 @@ It operates completely serverless when hosted on Netlify, using **Netlify Functi
 1.  **State Management:** The frontend (`app.js`) checks `localStorage` for your **Room Code** and **Device Name**.
 2.  **Creating a Paste:** You write/paste text, choose a type (Code, Text, Prompt, Link), and submit. A `POST` request goes to `/api/paste`.
 3.  **Local Dev Persistence:** In `server.js`, the POST request parses the body and appends it to `.data/pastes.json` under the namespace of the current Room Code.
-4.  **Production (Netlify) Persistence:** In `netlify/functions/api.js`, the request utilizes Netlify Blobs (`getStore("syncpaste-store")`) to read/write JSON arrays under the key `room_${roomCode}`.
+4.  **Production (Netlify) Persistence:** In `netlify/functions/paste.js`, the request checks for Upstash Redis variables. If set, it stores data in Upstash Redis (shared persistent database). If not, it falls back to Netlify Blobs, and then to container memory.
 5.  **Syncing:** Every few seconds, the browser makes a `GET` request to `/api/paste?room=ROOM_CODE` to fetch new pastes and renders them. If it is a code block, `Highlight.js` formats the syntax.
 
 ---

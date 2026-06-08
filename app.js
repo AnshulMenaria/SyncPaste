@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SyncPaste App Logic
+   SyncPaste App Logic - Clean & Robust Refactoring
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -7,26 +7,24 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentRoom = localStorage.getItem('syncpaste_room');
   let currentDevice = localStorage.getItem('syncpaste_device');
   let syncInterval = parseInt(localStorage.getItem('syncpaste_interval'));
-  let activeType = 'text'; // default type
+  let activeType = 'text'; 
   let pastesCache = [];
   let pollTimer = null;
 
-  // If variables are not initialized in localStorage, set defaults
+  // Initialize Defaults
   if (currentRoom === null) {
     currentRoom = 'sync-default';
     localStorage.setItem('syncpaste_room', currentRoom);
-    // Show settings modal on first-time load to guide the user
     setTimeout(() => { openModal(); }, 600);
   }
   
   if (!currentDevice) {
-    // Generate a default device name (e.g., Device-452)
     currentDevice = 'Device-' + Math.floor(100 + Math.random() * 900);
     localStorage.setItem('syncpaste_device', currentDevice);
   }
 
   if (isNaN(syncInterval)) {
-    syncInterval = 5000; // default to 5 seconds
+    syncInterval = 5000;
     localStorage.setItem('syncpaste_interval', syncInterval.toString());
   }
 
@@ -65,7 +63,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearRoomDataBtn = document.getElementById('clearRoomDataBtn');
   const toastContainer = document.getElementById('toastContainer');
 
-  // API Config
   const API_ENDPOINT = '/api/paste';
 
   /* ==========================================================================
@@ -73,25 +70,19 @@ document.addEventListener('DOMContentLoaded', () => {
      ========================================================================== */
   
   function init() {
-    // Render initial state displays
     currentRoomDisplay.textContent = currentRoom;
     currentDeviceDisplay.textContent = currentDevice;
     emptyRoomCodeDisplay.textContent = currentRoom;
     
-    // Set inputs in modal
     modalRoomInput.value = currentRoom;
     modalDeviceInput.value = currentDevice;
     syncIntervalSelect.value = syncInterval.toString();
 
-    // Trigger Lucide SVG replacements
     if (window.lucide) {
       lucide.createIcons();
     }
 
-    // Load feed
     fetchPastes();
-
-    // Start auto polling
     startPolling();
   }
 
@@ -101,14 +92,10 @@ document.addEventListener('DOMContentLoaded', () => {
   
   typePills.forEach(pill => {
     pill.addEventListener('click', () => {
-      // Deactivate other pills
       typePills.forEach(p => p.classList.remove('active'));
-      
-      // Activate clicked pill
       pill.classList.add('active');
-      activeType = pill.getAttribute('data-type');
+      activeType = pill.getAttribute('data-type') || 'text';
 
-      // Toggle code language selector
       if (activeType === 'code') {
         languageSelectorRow.classList.remove('hidden');
       } else {
@@ -117,7 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Clear Textarea Action
   clearTextareaBtn.addEventListener('click', () => {
     pasteContent.value = '';
     pasteContent.focus();
@@ -128,31 +114,24 @@ document.addEventListener('DOMContentLoaded', () => {
      API Calls: Fetch, Submit, Delete
      ========================================================================== */
 
-  // Fetch Feed Pastes
   async function fetchPastes(silent = false) {
     if (!silent) {
       showLoader();
     }
     
-    // Animate sync indicator icon
     const icon = syncIndicator.querySelector('i');
     if (icon) icon.classList.add('spin');
     syncStatusText.textContent = 'Syncing...';
 
     try {
       const response = await fetch(`${API_ENDPOINT}?room=${encodeURIComponent(currentRoom)}`);
-      
-      if (!response.ok) {
-        throw new Error('Network response error');
-      }
+      if (!response.ok) throw new Error('Network response error');
       
       const pastes = await response.json();
-      pastesCache = pastes;
+      pastesCache = Array.isArray(pastes) ? pastes : [];
       
-      // Render data
-      renderPastes(pastes);
+      renderPastes(pastesCache);
       
-      // Update sync time text
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       syncStatusText.textContent = `Synced ${timeStr}`;
     } catch (err) {
@@ -161,22 +140,17 @@ document.addEventListener('DOMContentLoaded', () => {
       syncStatusText.textContent = 'Sync failed';
     } finally {
       if (icon) {
-        // Stop spinning after a brief delay for user feedback
-        setTimeout(() => {
-          icon.classList.remove('spin');
-        }, 600);
+        setTimeout(() => { icon.classList.remove('spin'); }, 600);
       }
     }
   }
 
-  // Submit New Paste
   pasteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const content = pasteContent.value.trim();
     if (!content) return;
 
-    // Show loading on submit button
     const originalBtnHTML = submitBtn.innerHTML;
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<span>Sending...</span> <div class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-top-color: white;"></div>`;
@@ -192,21 +166,14 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const response = await fetch(API_ENDPOINT, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
-      if (!response.ok) {
-        throw new Error('Error saving paste');
-      }
+      if (!response.ok) throw new Error('Error saving paste');
 
-      // Clear textarea and reset
       pasteContent.value = '';
       showToast('Sent successfully!', 'success');
-      
-      // Fetch feed immediately
       await fetchPastes(true);
     } catch (err) {
       console.error('Submission failed:', err);
@@ -218,7 +185,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Delete Paste
   async function deletePaste(id) {
     if (!confirm('Are you sure you want to delete this item?')) return;
 
@@ -227,35 +193,29 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'DELETE'
       });
 
-      if (!response.ok) {
-        throw new Error('Delete failed');
-      }
+      if (!response.ok) throw new Error('Delete failed');
 
       showToast('Item deleted', 'success');
-      // Fetch feed immediately
-      fetchPastes(true);
+      await fetchPastes(true);
     } catch (err) {
       console.error('Delete failed:', err);
       showToast('Failed to delete item', 'error');
     }
   }
 
-  // Clear Room Data
   async function clearRoomData() {
-    if (!confirm('WARNING: This will permanently delete ALL pastes in this room. Are you sure you want to continue?')) return;
+    if (!confirm('WARNING: This will permanently delete ALL pastes in this room. Are you sure?')) return;
 
     try {
       const response = await fetch(`${API_ENDPOINT}?room=${encodeURIComponent(currentRoom)}`, {
         method: 'DELETE'
       });
 
-      if (!response.ok) {
-        throw new Error('Clear failed');
-      }
+      if (!response.ok) throw new Error('Clear failed');
 
       showToast('Room feed cleared', 'success');
       closeModal();
-      fetchPastes(true);
+      await fetchPastes(true);
     } catch (err) {
       console.error('Clear failed:', err);
       showToast('Failed to clear feed', 'error');
@@ -273,21 +233,24 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderPastes(pastes) {
-    // Hide loader
     feedLoader.classList.add('hidden');
-    
-    // Clear old pastes
     pasteList.querySelectorAll('.paste-card').forEach(c => c.remove());
 
-    // Apply client-side search filter
+    // Sanitize and filter out nulls/invalid records
+    const validPastes = (pastes || []).filter(p => p && typeof p === 'object' && p.id);
+
     const searchTerm = feedSearch.value.trim().toLowerCase();
-    const filteredPastes = pastes.filter(paste => {
+    const filteredPastes = validPastes.filter(paste => {
       if (!searchTerm) return true;
+      const content = (paste.content || '').toLowerCase();
+      const deviceInfo = (paste.deviceInfo || '').toLowerCase();
+      const type = (paste.type || '').toLowerCase();
+      const language = (paste.language || '').toLowerCase();
       return (
-        paste.content.toLowerCase().includes(searchTerm) ||
-        paste.deviceInfo.toLowerCase().includes(searchTerm) ||
-        paste.type.toLowerCase().includes(searchTerm) ||
-        (paste.language && paste.language.toLowerCase().includes(searchTerm))
+        content.includes(searchTerm) ||
+        deviceInfo.includes(searchTerm) ||
+        type.includes(searchTerm) ||
+        language.includes(searchTerm)
       );
     });
 
@@ -298,67 +261,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
     feedEmpty.classList.add('hidden');
 
-    // Render cards
     filteredPastes.forEach(paste => {
       const card = document.createElement('article');
       card.className = 'paste-card';
       card.setAttribute('data-id', paste.id);
 
-      // Icon determination based on device name
+      const content = paste.content || '';
+      const type = paste.type || 'text';
+      const language = paste.language || 'plaintext';
+      const deviceInfo = paste.deviceInfo || 'Unknown Device';
+      const timestamp = paste.timestamp || new Date().toISOString();
+
       let deviceIcon = 'laptop';
-      const nameLower = paste.deviceInfo.toLowerCase();
+      const nameLower = deviceInfo.toLowerCase();
       if (nameLower.includes('server') || nameLower.includes('vm') || nameLower.includes('node')) {
         deviceIcon = 'server';
       } else if (nameLower.includes('phone') || nameLower.includes('mobile') || nameLower.includes('android') || nameLower.includes('ios')) {
         deviceIcon = 'tablet';
       }
 
-      // Card Header HTML
       let headerHTML = `
         <div class="card-header">
           <div class="card-device-info">
             <i data-lucide="${deviceIcon}"></i>
-            <span>${escapeHTML(paste.deviceInfo)}</span>
+            <span>${escapeHTML(deviceInfo)}</span>
           </div>
           <div class="card-meta">
-            <span class="card-time" title="${new Date(paste.timestamp).toLocaleString()}">${getRelativeTime(paste.timestamp)}</span>
-            <span class="type-tag ${paste.type}">${paste.type}</span>
+            <span class="card-time" title="${new Date(timestamp).toLocaleString()}">${getRelativeTime(timestamp)}</span>
+            <span class="type-tag ${type}">${type}</span>
           </div>
         </div>
       `;
 
-      // Card Body HTML
       let bodyHTML = '<div class="card-body">';
-      if (paste.type === 'code') {
+      if (type === 'code') {
         bodyHTML += `
           <div class="code-container">
             <button class="code-copy-btn" data-action="code-copy" title="Copy Code Block">
               <i data-lucide="copy"></i>
             </button>
-            <pre><code class="language-${paste.language}">${escapeHTML(paste.content)}</code></pre>
+            <pre><code class="language-${language}">${escapeHTML(content)}</code></pre>
           </div>
         `;
-      } else if (paste.type === 'link') {
-        // Link checking
-        let href = paste.content.trim();
+      } else if (type === 'link') {
+        let href = content.trim();
         if (!/^https?:\/\//i.test(href)) {
           href = 'http://' + href;
         }
         bodyHTML += `
           <div class="link-content">
             <a href="${escapeHTML(href)}" target="_blank" rel="noopener noreferrer" class="link-anchor">
-              <i data-lucide="external-link"></i> ${escapeHTML(paste.content)}
+              <i data-lucide="external-link"></i> ${escapeHTML(content)}
             </a>
           </div>
         `;
-      } else if (paste.type === 'prompt') {
-        bodyHTML += `<div class="prompt-content">${escapeHTML(paste.content)}</div>`;
+      } else if (type === 'prompt') {
+        bodyHTML += `<div class="prompt-content">${escapeHTML(content)}</div>`;
       } else {
-        bodyHTML += `<div class="text-content">${escapeHTML(paste.content)}</div>`;
+        bodyHTML += `<div class="text-content">${escapeHTML(content)}</div>`;
       }
       bodyHTML += '</div>';
 
-      // Card Footer HTML
       let footerHTML = `
         <div class="card-footer">
           <button class="action-btn delete-btn" data-action="delete" title="Delete from Feed">
@@ -373,8 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.innerHTML = headerHTML + bodyHTML + footerHTML;
       pasteList.appendChild(card);
 
-      // Trigger Highlight.js if it is code
-      if (paste.type === 'code') {
+      if (type === 'code') {
         const codeBlock = card.querySelector('pre code');
         if (codeBlock && window.hljs) {
           hljs.highlightElement(codeBlock);
@@ -382,85 +344,64 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Re-create icons for new elements
     if (window.lucide) {
       lucide.createIcons();
     }
-
-    // Attach event listeners to card buttons
-    attachCardListeners();
   }
 
-  // Attach card click handlers
-  function attachCardListeners() {
-    const cards = pasteList.querySelectorAll('.paste-card');
-    cards.forEach(card => {
-      const id = card.getAttribute('data-id');
-      const pasteData = pastesCache.find(p => p.id === id);
-      if (!pasteData) return;
+  /* ==========================================================================
+     Event Delegation for Card Actions (Clean & Efficient)
+     ========================================================================== */
 
-      // Copy Action
-      const copyBtn = card.querySelector('.copy-btn');
-      copyBtn.addEventListener('click', async () => {
-        const success = await copyToClipboard(pasteData.content);
-        if (success) {
-          copyBtn.classList.add('copied');
-          copyBtn.innerHTML = '<i data-lucide="check"></i> Copied!';
-          if (window.lucide) lucide.createIcons();
-          showToast('Copied to clipboard!', 'success');
-          
-          setTimeout(() => {
-            copyBtn.classList.remove('copied');
-            copyBtn.innerHTML = '<i data-lucide="copy"></i> Copy';
-            if (window.lucide) lucide.createIcons();
-          }, 2000);
+  pasteList.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+
+    const card = btn.closest('.paste-card');
+    if (!card) return;
+
+    const id = card.getAttribute('data-id');
+    const pasteData = pastesCache.find(p => p.id === id);
+    if (!pasteData) return;
+
+    const action = btn.getAttribute('data-action');
+
+    if (action === 'copy' || action === 'code-copy') {
+      const success = await copyToClipboard(pasteData.content || '');
+      if (success) {
+        btn.classList.add('copied');
+        const originalHTML = btn.innerHTML;
+        if (action === 'copy') {
+          btn.innerHTML = '<i data-lucide="check"></i> Copied!';
         } else {
-          showToast('Unable to copy', 'error');
+          btn.innerHTML = '<i data-lucide="check"></i>';
         }
-      });
-
-      // Copy Action (Floating Code Block Copy)
-      const codeCopyBtn = card.querySelector('.code-copy-btn');
-      if (codeCopyBtn) {
-        codeCopyBtn.addEventListener('click', async () => {
-          const success = await copyToClipboard(pasteData.content);
-          if (success) {
-            codeCopyBtn.classList.add('copied');
-            codeCopyBtn.innerHTML = '<i data-lucide="check"></i>';
-            if (window.lucide) lucide.createIcons();
-            showToast('Copied code block!', 'success');
-            
-            setTimeout(() => {
-              codeCopyBtn.classList.remove('copied');
-              codeCopyBtn.innerHTML = '<i data-lucide="copy"></i>';
-              if (window.lucide) lucide.createIcons();
-            }, 2000);
-          } else {
-            showToast('Unable to copy', 'error');
-          }
-        });
+        if (window.lucide) lucide.createIcons();
+        showToast('Copied to clipboard!', 'success');
+        
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.innerHTML = originalHTML;
+          if (window.lucide) lucide.createIcons();
+        }, 2000);
+      } else {
+        showToast('Unable to copy', 'error');
       }
-
-      // Delete Action
-      const deleteBtn = card.querySelector('.delete-btn');
-      deleteBtn.addEventListener('click', () => {
-        deletePaste(id);
-      });
-    });
-  }
+    } else if (action === 'delete') {
+      deletePaste(id);
+    }
+  });
 
   /* ==========================================================================
      Search & Polling Utilities
      ========================================================================== */
 
-  // Search input listeners
   feedSearch.addEventListener('input', () => {
     if (feedSearch.value.trim()) {
       clearSearchBtn.classList.remove('hidden');
     } else {
       clearSearchBtn.classList.add('hidden');
     }
-    // Filter currently loaded cards
     renderPastes(pastesCache);
   });
 
@@ -470,13 +411,11 @@ document.addEventListener('DOMContentLoaded', () => {
     renderPastes(pastesCache);
   });
 
-  // Sync / Refresh buttons
   refreshBtn.addEventListener('click', () => {
     fetchPastes(false);
     showToast('Feed refreshed', 'info');
   });
 
-  // Background Polling Management
   function startPolling() {
     stopPolling();
     if (syncInterval > 0) {
@@ -508,21 +447,17 @@ document.addEventListener('DOMContentLoaded', () => {
     configModal.classList.add('hidden');
   }
 
-  // Room status badge trigger click
   roomStatusBtn.addEventListener('click', openModal);
   closeModalBtn.addEventListener('click', closeModal);
   
-  // Close modal when clicking outside card
   configModal.addEventListener('click', (e) => {
     if (e.target === configModal) {
       closeModal();
     }
   });
 
-  // Save Room Configuration
   saveRoomBtn.addEventListener('click', () => {
     const rawVal = modalRoomInput.value.trim().toLowerCase();
-    // Validate: alphanumeric and hyphens/underscores only
     const cleanVal = rawVal.replace(/[^a-z0-9-_]/g, '');
     
     if (!cleanVal) {
@@ -537,14 +472,11 @@ document.addEventListener('DOMContentLoaded', () => {
       emptyRoomCodeDisplay.textContent = currentRoom;
       
       showToast(`Switched to Room: ${currentRoom}`, 'success');
-      // Fetch new room items
       fetchPastes(false);
     }
-    
     closeModal();
   });
 
-  // Save Device Configuration
   saveDeviceBtn.addEventListener('click', () => {
     const val = modalDeviceInput.value.trim();
     if (!val) {
@@ -559,7 +491,6 @@ document.addEventListener('DOMContentLoaded', () => {
     closeModal();
   });
 
-  // Save Sync Interval Configuration
   syncIntervalSelect.addEventListener('change', () => {
     const val = parseInt(syncIntervalSelect.value);
     syncInterval = val;
@@ -574,14 +505,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Dangerous clear room action
   clearRoomDataBtn.addEventListener('click', clearRoomData);
 
   /* ==========================================================================
      General Helpers
      ========================================================================== */
 
-  // Relative Time String Generator
   function getRelativeTime(isoString) {
     const now = new Date();
     const past = new Date(isoString);
@@ -591,12 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const elapsed = now - past;
     
-    // Prevent negative bounds due to laptop clock deviations
-    if (elapsed < 0) {
-      return 'Just now';
-    }
-    
-    if (elapsed < msPerMinute) {
+    if (isNaN(elapsed) || elapsed < msPerMinute) {
       return 'Just now';
     } else if (elapsed < msPerHour) {
       const mins = Math.round(elapsed / msPerMinute);
@@ -610,7 +534,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // HTML Escaping Utility
   function escapeHTML(str) {
     if (!str) return '';
     return str.replace(/[&<>'"]/g, 
@@ -624,7 +547,6 @@ document.addEventListener('DOMContentLoaded', () => {
     );
   }
 
-  // Copy Clipboard Helper with Fallback
   async function copyToClipboard(text) {
     if (navigator.clipboard && window.isSecureContext) {
       try {
@@ -635,7 +557,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     
-    // Fallback: create temporary text area
     const textArea = document.createElement('textarea');
     textArea.value = text;
     textArea.style.position = 'fixed';
@@ -655,7 +576,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Toast System Generator
   function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
@@ -674,21 +594,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     toastContainer.appendChild(toast);
     
-    // Refresh icons inside toast
     if (window.lucide) {
       lucide.createIcons();
     }
 
-    // Auto-remove toast
     setTimeout(() => {
       toast.style.opacity = '0';
       toast.style.transform = 'translateY(10px)';
-      setTimeout(() => {
-        toast.remove();
-      }, 200);
+      setTimeout(() => { toast.remove(); }, 200);
     }, 3500);
   }
 
-  // Initialize App
   init();
 });

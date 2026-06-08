@@ -717,6 +717,7 @@ select:focus {
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-md);
   overflow: hidden;
+  flex-shrink: 0;
   transition: all var(--transition-normal);
   animation: cardFadeIn 0.3s ease-out;
 }

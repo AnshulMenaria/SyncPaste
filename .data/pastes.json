@@ -1,12 +1,20 @@
 {
   "sync-default": [
     {
-      "id": "ludju8jke",
-      "content": "Hey",
-      "type": "text",
+      "id": "y8vo2mne8",
+      "content": "nn",
+      "type": "prompt",
       "language": "plaintext",
       "deviceInfo": "Device-997",
-      "timestamp": "2026-06-08T06:52:35.132Z"
+      "timestamp": "2026-06-08T08:25:35.356Z"
+    },
+    {
+      "id": "p6t0pj0uc",
+      "content": "Verify clean render",
+      "type": "prompt",
+      "language": "plaintext",
+      "deviceInfo": "Device-997",
+      "timestamp": "2026-06-08T08:22:40.879Z"
     }
   ]
 }

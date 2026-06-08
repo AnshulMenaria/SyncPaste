@@ -181,14 +181,23 @@ export default async (req, context) => {
         });
       }
 
+      // Strict whitelisting of data fields
+      const allowedTypes = ["text", "code", "prompt", "link"];
+      const validatedType = allowedTypes.includes(type) ? type : "text";
+
+      const allowedLanguages = [
+        "plaintext", "javascript", "python", "bash", "html", "css", "json", "sql", "yaml", "dockerfile"
+      ];
+      const validatedLanguage = allowedLanguages.includes(language) ? language : "plaintext";
+
       const roomPastes = await getRoomPastes(room);
 
       const newPaste = {
         id: Math.random().toString(36).substring(2, 11),
         content,
-        type: type || "text",
-        language: language || "plaintext",
-        deviceInfo: deviceInfo || "Unknown Device",
+        type: validatedType,
+        language: validatedLanguage,
+        deviceInfo: deviceInfo ? String(deviceInfo).substring(0, 100) : "Unknown Device",
         timestamp: new Date().toISOString(),
       };
 

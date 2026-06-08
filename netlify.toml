@@ -6,3 +6,8 @@
   command = "node server.js"
   port = 3000
   targetPort = 3000
+
+[[redirects]]
+  from = "/api/paste"
+  to = "/.netlify/functions/paste"
+  status = 200

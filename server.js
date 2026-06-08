@@ -71,6 +71,13 @@ function getRequestBody(req) {
 
 // Server logic
 const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const pathname = url.pathname;
+  const method = req.method;
+
+  // Setup logging
+  console.log(`[${new Date().toISOString()}] ${method} ${req.url}`);
+
   // Setup CORS headers for ease of local testing if needed
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
@@ -81,10 +88,6 @@ const server = http.createServer(async (req, res) => {
     res.end();
     return;
   }
-
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  const pathname = url.pathname;
-  const method = req.method;
 
   // API Endpoints
   if (pathname === '/api/paste') {

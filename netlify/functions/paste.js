@@ -20,7 +20,6 @@ export default async (req, context) => {
 
   try {
     // Initialize Netlify Blobs store
-    // Use a store named "syncpaste-store"
     const store = getStore("syncpaste-store");
 
     // GET /api/paste?room=ROOM_NAME
@@ -74,7 +73,7 @@ export default async (req, context) => {
 
       roomPastes.unshift(newPaste);
 
-      // Keep only last 50 pastes to prevent room bloat
+      // Keep only last 50 pastes
       const trimmedPastes = roomPastes.slice(0, 50);
 
       await store.setJSON(roomKey, trimmedPastes);
@@ -123,8 +122,4 @@ export default async (req, context) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-};
-
-export const config = {
-  path: "/api/paste",
 };

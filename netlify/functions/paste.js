@@ -1,7 +1,18 @@
 import { getStore } from "@netlify/blobs";
 
-// In-memory store fallback for serverless container instances
+// In-memory fallback database
 const memoryStore = {};
+
+// Helper to wrap promises in a timeout to prevent hanging connections
+const withTimeout = (promise, ms = 1500) => {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("Database connection timeout")), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    clearTimeout(timeoutId);
+  });
+};
 
 export default async (req, context) => {
   // CORS Headers
@@ -21,37 +32,37 @@ export default async (req, context) => {
   const url = new URL(req.url);
   const method = req.method;
 
-  // Helper to read pastes (trough Netlify Blobs or fallback to memoryStore)
+  // Helper to read pastes (with a 1.5s timeout safeguard)
   const getRoomPastes = async (room) => {
     try {
       const store = getStore("syncpaste-store");
-      return (await store.getJSON(`room_${room}`)) || [];
+      return (await withTimeout(store.getJSON(`room_${room}`), 1500)) || [];
     } catch (e) {
-      console.warn("Netlify Blobs failed, using in-memory store:", e.message);
+      console.warn("Database read failed or timed out. Falling back to memory:", e.message);
       return memoryStore[room] || [];
     }
   };
 
-  // Helper to save pastes (trough Netlify Blobs or fallback to memoryStore)
+  // Helper to save pastes (with a 1.5s timeout safeguard)
   const saveRoomPastes = async (room, pastes) => {
     try {
       const store = getStore("syncpaste-store");
-      await store.setJSON(`room_${room}`, pastes);
+      await withTimeout(store.setJSON(`room_${room}`, pastes), 1500);
       return true;
     } catch (e) {
-      console.warn("Netlify Blobs failed, saving to in-memory store:", e.message);
+      console.warn("Database write failed or timed out. Saving to memory:", e.message);
       memoryStore[room] = pastes;
       return false;
     }
   };
 
-  // Helper to delete pastes (trough Netlify Blobs or fallback to memoryStore)
+  // Helper to delete pastes (with a 1.5s timeout safeguard)
   const deleteRoomPastes = async (room) => {
     try {
       const store = getStore("syncpaste-store");
-      await store.delete(`room_${room}`);
+      await withTimeout(store.delete(`room_${room}`), 1500);
     } catch (e) {
-      console.warn("Netlify Blobs delete failed, clearing in-memory store:", e.message);
+      console.warn("Database delete failed or timed out. Clearing from memory:", e.message);
       delete memoryStore[room];
     }
   };

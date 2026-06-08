@@ -195,7 +195,6 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        payload: JSON.stringify(payload), // Wait, fetch body is body: JSON.stringify...
         body: JSON.stringify(payload)
       });
 

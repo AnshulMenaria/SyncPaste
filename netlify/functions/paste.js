@@ -1,6 +1,6 @@
 import { getStore } from "@netlify/blobs";
 
-// In-memory fallback database
+// In-memory fallback database for serverless container instances (short-term fallback)
 const memoryStore = {};
 
 // Helper to wrap promises in a timeout to prevent hanging connections
@@ -32,8 +32,39 @@ export default async (req, context) => {
   const url = new URL(req.url);
   const method = req.method;
 
-  // Helper to read pastes (with a 1.5s timeout safeguard)
+  const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  // Helper to read pastes
   const getRoomPastes = async (room) => {
+    // 1. Try Upstash Redis (Shared Database - Recommended)
+    if (redisUrl && redisToken) {
+      try {
+        const response = await withTimeout(
+          fetch(redisUrl, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${redisToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(["GET", `room_${room}`]),
+          }),
+          2000
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.result) {
+            return JSON.parse(data.result);
+          }
+        }
+        return [];
+      } catch (e) {
+        console.warn("Upstash Redis read failed, trying Netlify Blobs fallback:", e.message);
+      }
+    }
+
+    // 2. Try Netlify Blobs (Production Key-Value Fallback)
     try {
       const store = getStore("syncpaste-store");
       return (await withTimeout(store.getJSON(`room_${room}`), 1500)) || [];
@@ -43,8 +74,32 @@ export default async (req, context) => {
     }
   };
 
-  // Helper to save pastes (with a 1.5s timeout safeguard)
+  // Helper to save pastes
   const saveRoomPastes = async (room, pastes) => {
+    // 1. Try Upstash Redis
+    if (redisUrl && redisToken) {
+      try {
+        const response = await withTimeout(
+          fetch(redisUrl, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${redisToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(["SET", `room_${room}`, JSON.stringify(pastes)]),
+          }),
+          2000
+        );
+
+        if (response.ok) {
+          return true;
+        }
+      } catch (e) {
+        console.warn("Upstash Redis write failed, trying Netlify Blobs fallback:", e.message);
+      }
+    }
+
+    // 2. Try Netlify Blobs
     try {
       const store = getStore("syncpaste-store");
       await withTimeout(store.setJSON(`room_${room}`, pastes), 1500);
@@ -56,8 +111,29 @@ export default async (req, context) => {
     }
   };
 
-  // Helper to delete pastes (with a 1.5s timeout safeguard)
+  // Helper to delete pastes
   const deleteRoomPastes = async (room) => {
+    // 1. Try Upstash Redis
+    if (redisUrl && redisToken) {
+      try {
+        await withTimeout(
+          fetch(redisUrl, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${redisToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(["DEL", `room_${room}`]),
+          }),
+          2000
+        );
+        return;
+      } catch (e) {
+        console.warn("Upstash Redis delete failed, trying Netlify Blobs fallback:", e.message);
+      }
+    }
+
+    // 2. Try Netlify Blobs
     try {
       const store = getStore("syncpaste-store");
       await withTimeout(store.delete(`room_${room}`), 1500);

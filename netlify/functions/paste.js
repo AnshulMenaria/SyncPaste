@@ -1,5 +1,8 @@
 import { getStore } from "@netlify/blobs";
 
+// In-memory store fallback for serverless container instances
+const memoryStore = {};
+
 export default async (req, context) => {
   // CORS Headers
   const corsHeaders = {
@@ -18,10 +21,42 @@ export default async (req, context) => {
   const url = new URL(req.url);
   const method = req.method;
 
-  try {
-    // Initialize Netlify Blobs store
-    const store = getStore("syncpaste-store");
+  // Helper to read pastes (trough Netlify Blobs or fallback to memoryStore)
+  const getRoomPastes = async (room) => {
+    try {
+      const store = getStore("syncpaste-store");
+      return (await store.getJSON(`room_${room}`)) || [];
+    } catch (e) {
+      console.warn("Netlify Blobs failed, using in-memory store:", e.message);
+      return memoryStore[room] || [];
+    }
+  };
 
+  // Helper to save pastes (trough Netlify Blobs or fallback to memoryStore)
+  const saveRoomPastes = async (room, pastes) => {
+    try {
+      const store = getStore("syncpaste-store");
+      await store.setJSON(`room_${room}`, pastes);
+      return true;
+    } catch (e) {
+      console.warn("Netlify Blobs failed, saving to in-memory store:", e.message);
+      memoryStore[room] = pastes;
+      return false;
+    }
+  };
+
+  // Helper to delete pastes (trough Netlify Blobs or fallback to memoryStore)
+  const deleteRoomPastes = async (room) => {
+    try {
+      const store = getStore("syncpaste-store");
+      await store.delete(`room_${room}`);
+    } catch (e) {
+      console.warn("Netlify Blobs delete failed, clearing in-memory store:", e.message);
+      delete memoryStore[room];
+    }
+  };
+
+  try {
     // GET /api/paste?room=ROOM_NAME
     if (method === "GET") {
       const room = url.searchParams.get("room");
@@ -32,7 +67,7 @@ export default async (req, context) => {
         });
       }
 
-      const roomPastes = (await store.getJSON(`room_${room}`)) || [];
+      const roomPastes = await getRoomPastes(room);
       return new Response(JSON.stringify(roomPastes), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -59,8 +94,7 @@ export default async (req, context) => {
         });
       }
 
-      const roomKey = `room_${room}`;
-      const roomPastes = (await store.getJSON(roomKey)) || [];
+      const roomPastes = await getRoomPastes(room);
 
       const newPaste = {
         id: Math.random().toString(36).substring(2, 11),
@@ -76,7 +110,7 @@ export default async (req, context) => {
       // Keep only last 50 pastes
       const trimmedPastes = roomPastes.slice(0, 50);
 
-      await store.setJSON(roomKey, trimmedPastes);
+      await saveRoomPastes(room, trimmedPastes);
 
       return new Response(JSON.stringify(newPaste), {
         status: 201,
@@ -95,14 +129,12 @@ export default async (req, context) => {
         });
       }
 
-      const roomKey = `room_${room}`;
-      
       if (id) {
-        const roomPastes = (await store.getJSON(roomKey)) || [];
+        const roomPastes = await getRoomPastes(room);
         const filteredPastes = roomPastes.filter((p) => p.id !== id);
-        await store.setJSON(roomKey, filteredPastes);
+        await saveRoomPastes(room, filteredPastes);
       } else {
-        await store.delete(roomKey);
+        await deleteRoomPastes(room);
       }
 
       return new Response(JSON.stringify({ success: true }), {
@@ -116,7 +148,7 @@ export default async (req, context) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("Netlify Function Error:", error);
+    console.error("Serverless Function Error:", error);
     return new Response(JSON.stringify({ error: "Internal Server Error", message: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

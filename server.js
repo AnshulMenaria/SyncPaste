@@ -102,15 +102,24 @@ const server = http.createServer(async (req, res) => {
       }
       const data = await readData();
       const roomPastes = data[room] || [];
+      
+      const now = Date.now();
+      const filtered = roomPastes.filter(p => !p.expiresAt || new Date(p.expiresAt).getTime() > now);
+      
+      if (filtered.length !== roomPastes.length) {
+        data[room] = filtered;
+        await writeData(data);
+      }
+
       res.writeHead(200);
-      return res.end(JSON.stringify(roomPastes));
+      return res.end(JSON.stringify(filtered));
     }
 
     // POST /api/paste
     if (method === 'POST') {
       try {
         const body = await getRequestBody(req);
-        const { room, content, type, language, deviceInfo } = body;
+        const { room, content, type, language, deviceInfo, fileName, expiresAt } = body;
         if (!room || !content) {
           res.writeHead(400);
           return res.end(JSON.stringify({ error: 'Missing room or content' }));
@@ -122,7 +131,7 @@ const server = http.createServer(async (req, res) => {
         }
 
         // Strict whitelisting of data fields
-        const allowedTypes = ['text', 'code', 'prompt', 'link'];
+        const allowedTypes = ['text', 'code', 'prompt', 'link', 'file'];
         const validatedType = allowedTypes.includes(type) ? type : 'text';
 
         const allowedLanguages = [
@@ -130,13 +139,18 @@ const server = http.createServer(async (req, res) => {
         ];
         const validatedLanguage = allowedLanguages.includes(language) ? language : 'plaintext';
 
+        const now = Date.now();
+        data[room] = data[room].filter(p => !p.expiresAt || new Date(p.expiresAt).getTime() > now);
+
         const newPaste = {
           id: Math.random().toString(36).substring(2, 11),
           content,
+          fileName: fileName || undefined,
           type: validatedType,
           language: validatedLanguage,
           deviceInfo: deviceInfo ? String(deviceInfo).substring(0, 100) : 'Unknown Device',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          expiresAt: expiresAt !== undefined ? expiresAt : new Date(Date.now() + 10 * 60000).toISOString()
         };
 
         // Add to start of array (newest first)
@@ -168,8 +182,9 @@ const server = http.createServer(async (req, res) => {
       const data = await readData();
       if (data[room]) {
         if (id) {
-          // Delete single paste
-          data[room] = data[room].filter(p => p.id !== id);
+          // Delete single paste and clear expired
+          const now = Date.now();
+          data[room] = data[room].filter(p => p.id !== id && (!p.expiresAt || new Date(p.expiresAt).getTime() > now));
         } else {
           // Clear all pastes in room
           data[room] = [];

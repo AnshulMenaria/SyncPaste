@@ -34,6 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const textInputWrapper = document.getElementById('textInputWrapper');
   const fileInputWrapper = document.getElementById('fileInputWrapper');
   const pasteFile = document.getElementById('pasteFile');
+  const fileUploadBox = document.querySelector('.file-upload-box');
+  const fileHelpText = document.getElementById('fileHelpText');
   const clearTextareaBtn = document.getElementById('clearTextareaBtn');
   const typePills = document.querySelectorAll('.type-pill');
   const languageSelectorRow = document.getElementById('languageSelectorRow');
@@ -109,9 +111,23 @@ document.addEventListener('DOMContentLoaded', () => {
       if (activeType === 'file') {
         textInputWrapper.classList.add('hidden');
         fileInputWrapper.classList.remove('hidden');
+        
+        const neverOption = pasteExpiration.querySelector('option[value="never"]');
+        if (neverOption) {
+          neverOption.disabled = true;
+          if (pasteExpiration.value === 'never') {
+            pasteExpiration.value = '10';
+            showToast('Files cannot be kept forever. Auto-delete set to 10 mins.', 'info');
+          }
+        }
       } else {
         textInputWrapper.classList.remove('hidden');
         fileInputWrapper.classList.add('hidden');
+        
+        const neverOption = pasteExpiration.querySelector('option[value="never"]');
+        if (neverOption) {
+          neverOption.disabled = false;
+        }
       }
     });
   });
@@ -120,6 +136,33 @@ document.addEventListener('DOMContentLoaded', () => {
     pasteContent.value = '';
     pasteContent.focus();
     showToast('Input cleared', 'info');
+  });
+
+  fileUploadBox.addEventListener('click', (e) => {
+    if (e.target !== pasteFile) {
+      pasteFile.click();
+    }
+  });
+
+  pasteFile.addEventListener('change', () => {
+    const file = pasteFile.files[0];
+    if (!file) {
+      fileHelpText.textContent = 'Max size: ~4MB (Serverless limit)';
+      fileHelpText.style.color = 'var(--text-muted)';
+      submitBtn.disabled = false;
+      return;
+    }
+    
+    const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+    if (file.size > 4 * 1024 * 1024) {
+      fileHelpText.textContent = `Selected: ${file.name} (${sizeInMB} MB) - Limit exceeds!`;
+      fileHelpText.style.color = 'var(--danger)';
+      submitBtn.disabled = true;
+    } else {
+      fileHelpText.textContent = `Selected: ${file.name} (${sizeInMB} MB)`;
+      fileHelpText.style.color = 'var(--success)';
+      submitBtn.disabled = false;
+    }
   });
 
   /* ==========================================================================
@@ -182,15 +225,22 @@ document.addEventListener('DOMContentLoaded', () => {
       fileName = file.name;
     } else {
       content = pasteContent.value.trim();
-      if (!content) return;
+      if (!content) {
+        showToast('Please enter some content or select a file', 'warning');
+        return;
+      }
     }
 
     const originalBtnHTML = submitBtn.innerHTML;
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<span>Sending...</span> <div class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-top-color: white;"></div>`;
 
-    const expiresInMinutes = parseInt(pasteExpiration.value) || 10;
-    const expiresAt = new Date(Date.now() + expiresInMinutes * 60000).toISOString();
+    const expirationValue = pasteExpiration.value;
+    let expiresAt = null;
+    if (expirationValue !== 'never') {
+      const expiresInMinutes = parseInt(expirationValue) || 10;
+      expiresAt = new Date(Date.now() + expiresInMinutes * 60000).toISOString();
+    }
 
     const payload = {
       room: currentRoom,
@@ -213,6 +263,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       pasteContent.value = '';
       pasteFile.value = '';
+      if (fileHelpText) {
+        fileHelpText.textContent = 'Max size: ~4MB (Serverless limit)';
+        fileHelpText.style.color = 'var(--text-muted)';
+      }
       showToast('Sent successfully!', 'success');
       await fetchPastes(true);
     } catch (err) {

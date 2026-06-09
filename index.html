@@ -67,7 +67,6 @@
                 <textarea 
                   id="pasteContent" 
                   placeholder="Paste code snippets, shell scripts, prompt templates, queries, or raw text here..." 
-                  required
                 ></textarea>
                 <button type="button" class="clear-textarea-btn" id="clearTextareaBtn" title="Clear Content">
                   <i data-lucide="x"></i>
@@ -78,8 +77,8 @@
               <div class="file-wrapper hidden" id="fileInputWrapper">
                 <div class="file-upload-box">
                   <i data-lucide="upload-cloud" class="upload-icon"></i>
-                  <input type="file" id="pasteFile" class="file-input">
-                  <p class="file-help-text">Max size: ~4MB (Serverless limit)</p>
+                  <input type="file" id="pasteFile" class="file-input" style="display: none;">
+                  <p class="file-help-text" id="fileHelpText">Max size: ~4MB (Serverless limit)</p>
                 </div>
               </div>
             </div>
@@ -141,6 +140,7 @@
                     <option value="2">2 Minutes</option>
                     <option value="5">5 Minutes</option>
                     <option value="10" selected>10 Minutes</option>
+                    <option value="never">Never (Keep Forever)</option>
                   </select>
                   <i data-lucide="chevron-down" class="select-arrow"></i>
                 </div>

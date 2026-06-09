@@ -212,7 +212,7 @@ export default async (req, context) => {
         language: validatedLanguage,
         deviceInfo: deviceInfo ? String(deviceInfo).substring(0, 100) : "Unknown Device",
         timestamp: new Date().toISOString(),
-        expiresAt: expiresAt || new Date(Date.now() + 10 * 60000).toISOString()
+        expiresAt: expiresAt !== undefined ? expiresAt : new Date(Date.now() + 10 * 60000).toISOString()
       };
 
       filtered.unshift(newPaste);

@@ -427,8 +427,8 @@ select:focus {
 
 /* Content Type Pills */
 .type-pills-container {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.35rem;
   background: rgba(0, 0, 0, 0.15);
   padding: 0.25rem;
@@ -437,6 +437,7 @@ select:focus {
 }
 
 .type-pill {
+  flex: 1 1 auto;
   background: transparent;
   border: none;
   color: var(--text-secondary);

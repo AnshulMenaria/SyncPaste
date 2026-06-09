@@ -37,6 +37,7 @@ export default async (req, context) => {
 
   // Helper to read pastes
   const getRoomPastes = async (room) => {
+
     // 1. Try Upstash Redis (Shared Database - Recommended)
     if (redisUrl && redisToken) {
       try {
@@ -155,7 +156,15 @@ export default async (req, context) => {
       }
 
       const roomPastes = await getRoomPastes(room);
-      return new Response(JSON.stringify(roomPastes), {
+      
+      const now = Date.now();
+      const filtered = roomPastes.filter(p => !p.expiresAt || new Date(p.expiresAt).getTime() > now);
+
+      if (filtered.length !== roomPastes.length) {
+        await saveRoomPastes(room, filtered);
+      }
+
+      return new Response(JSON.stringify(filtered), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -173,7 +182,7 @@ export default async (req, context) => {
         });
       }
 
-      const { room, content, type, language, deviceInfo } = body;
+      const { room, content, type, language, deviceInfo, fileName, expiresAt } = body;
       if (!room || !content) {
         return new Response(JSON.stringify({ error: "Missing room or content" }), {
           status: 400,
@@ -182,7 +191,7 @@ export default async (req, context) => {
       }
 
       // Strict whitelisting of data fields
-      const allowedTypes = ["text", "code", "prompt", "link"];
+      const allowedTypes = ["text", "code", "prompt", "link", "file"];
       const validatedType = allowedTypes.includes(type) ? type : "text";
 
       const allowedLanguages = [
@@ -191,20 +200,25 @@ export default async (req, context) => {
       const validatedLanguage = allowedLanguages.includes(language) ? language : "plaintext";
 
       const roomPastes = await getRoomPastes(room);
+      
+      const now = Date.now();
+      const filtered = roomPastes.filter(p => !p.expiresAt || new Date(p.expiresAt).getTime() > now);
 
       const newPaste = {
         id: Math.random().toString(36).substring(2, 11),
         content,
+        fileName: fileName || undefined,
         type: validatedType,
         language: validatedLanguage,
         deviceInfo: deviceInfo ? String(deviceInfo).substring(0, 100) : "Unknown Device",
         timestamp: new Date().toISOString(),
+        expiresAt: expiresAt || new Date(Date.now() + 10 * 60000).toISOString()
       };
 
-      roomPastes.unshift(newPaste);
+      filtered.unshift(newPaste);
 
       // Keep only last 50 pastes
-      const trimmedPastes = roomPastes.slice(0, 50);
+      const trimmedPastes = filtered.slice(0, 50);
 
       await saveRoomPastes(room, trimmedPastes);
 
@@ -227,7 +241,8 @@ export default async (req, context) => {
 
       if (id) {
         const roomPastes = await getRoomPastes(room);
-        const filteredPastes = roomPastes.filter((p) => p.id !== id);
+        const now = Date.now();
+        const filteredPastes = roomPastes.filter(p => p.id !== id && (!p.expiresAt || new Date(p.expiresAt).getTime() > now));
         await saveRoomPastes(room, filteredPastes);
       } else {
         await deleteRoomPastes(room);

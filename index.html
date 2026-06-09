@@ -60,16 +60,28 @@
           </div>
           
           <form id="pasteForm" class="paste-form">
-            <!-- Content Textarea -->
-            <div class="textarea-wrapper">
-              <textarea 
-                id="pasteContent" 
-                placeholder="Paste code snippets, shell scripts, prompt templates, queries, or raw text here..." 
-                required
-              ></textarea>
-              <button type="button" class="clear-textarea-btn" id="clearTextareaBtn" title="Clear Content">
-                <i data-lucide="x"></i>
-              </button>
+            <!-- Content Inputs -->
+            <div class="content-inputs">
+              <!-- Content Textarea -->
+              <div class="textarea-wrapper" id="textInputWrapper">
+                <textarea 
+                  id="pasteContent" 
+                  placeholder="Paste code snippets, shell scripts, prompt templates, queries, or raw text here..." 
+                  required
+                ></textarea>
+                <button type="button" class="clear-textarea-btn" id="clearTextareaBtn" title="Clear Content">
+                  <i data-lucide="x"></i>
+                </button>
+              </div>
+              
+              <!-- File Input (Hidden by default) -->
+              <div class="file-wrapper hidden" id="fileInputWrapper">
+                <div class="file-upload-box">
+                  <i data-lucide="upload-cloud" class="upload-icon"></i>
+                  <input type="file" id="pasteFile" class="file-input">
+                  <p class="file-help-text">Max size: ~4MB (Serverless limit)</p>
+                </div>
+              </div>
             </div>
 
             <!-- Content Customizations -->
@@ -89,6 +101,9 @@
                   </button>
                   <button type="button" class="type-pill" data-type="link">
                     <i data-lucide="link"></i> Link
+                  </button>
+                  <button type="button" class="type-pill" data-type="file">
+                    <i data-lucide="file"></i> File
                   </button>
                 </div>
               </div>
@@ -110,6 +125,22 @@
                     <option value="sql">SQL</option>
                     <option value="yaml">YAML / Markdown</option>
                     <option value="dockerfile">Dockerfile</option>
+                  </select>
+                  <i data-lucide="chevron-down" class="select-arrow"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Expiration Dropdown -->
+            <div class="form-row">
+              <div class="input-group">
+                <label for="pasteExpiration">Auto-Delete After</label>
+                <div class="select-wrapper">
+                  <select id="pasteExpiration">
+                    <option value="1">1 Minute</option>
+                    <option value="2">2 Minutes</option>
+                    <option value="5">5 Minutes</option>
+                    <option value="10" selected>10 Minutes</option>
                   </select>
                   <i data-lucide="chevron-down" class="select-arrow"></i>
                 </div>

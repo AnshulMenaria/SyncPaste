@@ -31,10 +31,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // DOM Elements
   const pasteForm = document.getElementById('pasteForm');
   const pasteContent = document.getElementById('pasteContent');
+  const textInputWrapper = document.getElementById('textInputWrapper');
+  const fileInputWrapper = document.getElementById('fileInputWrapper');
+  const pasteFile = document.getElementById('pasteFile');
   const clearTextareaBtn = document.getElementById('clearTextareaBtn');
   const typePills = document.querySelectorAll('.type-pill');
   const languageSelectorRow = document.getElementById('languageSelectorRow');
   const pasteLanguage = document.getElementById('pasteLanguage');
+  const pasteExpiration = document.getElementById('pasteExpiration');
   const submitBtn = document.getElementById('submitBtn');
   
   const currentRoomDisplay = document.getElementById('currentRoomDisplay');
@@ -101,6 +105,14 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         languageSelectorRow.classList.add('hidden');
       }
+
+      if (activeType === 'file') {
+        textInputWrapper.classList.add('hidden');
+        fileInputWrapper.classList.remove('hidden');
+      } else {
+        textInputWrapper.classList.remove('hidden');
+        fileInputWrapper.classList.add('hidden');
+      }
     });
   });
 
@@ -148,19 +160,46 @@ document.addEventListener('DOMContentLoaded', () => {
   pasteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const content = pasteContent.value.trim();
-    if (!content) return;
+    let content = '';
+    let fileName = '';
+
+    if (activeType === 'file') {
+      const file = pasteFile.files[0];
+      if (!file) {
+        showToast('Please select a file', 'error');
+        return;
+      }
+      if (file.size > 4 * 1024 * 1024) {
+        showToast('File size must be less than 4MB', 'error');
+        return;
+      }
+      content = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      fileName = file.name;
+    } else {
+      content = pasteContent.value.trim();
+      if (!content) return;
+    }
 
     const originalBtnHTML = submitBtn.innerHTML;
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<span>Sending...</span> <div class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-top-color: white;"></div>`;
 
+    const expiresInMinutes = parseInt(pasteExpiration.value) || 10;
+    const expiresAt = new Date(Date.now() + expiresInMinutes * 60000).toISOString();
+
     const payload = {
       room: currentRoom,
       content: content,
+      fileName: fileName,
       type: activeType,
       language: activeType === 'code' ? pasteLanguage.value : 'plaintext',
-      deviceInfo: currentDevice
+      deviceInfo: currentDevice,
+      expiresAt: expiresAt
     };
 
     try {
@@ -173,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!response.ok) throw new Error('Error saving paste');
 
       pasteContent.value = '';
+      pasteFile.value = '';
       showToast('Sent successfully!', 'success');
       await fetchPastes(true);
     } catch (err) {
@@ -317,6 +357,15 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
       } else if (type === 'prompt') {
         bodyHTML += `<div class="prompt-content">${escapeHTML(content)}</div>`;
+      } else if (type === 'file') {
+        const fName = paste.fileName || 'download_file';
+        bodyHTML += `
+          <div class="file-content">
+            <a href="${content}" download="${escapeHTML(fName)}" class="link-anchor" title="Download File">
+              <i data-lucide="download-cloud"></i> ${escapeHTML(fName)}
+            </a>
+          </div>
+        `;
       } else {
         bodyHTML += `<div class="text-content">${escapeHTML(content)}</div>`;
       }

@@ -797,6 +797,49 @@ select:focus {
   color: #34d399;
 }
 
+.type-tag.file {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+}
+
+/* File Upload Box */
+.file-upload-box {
+  width: 100%;
+  min-height: 240px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 2px dashed var(--surface-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  transition: all var(--transition-normal);
+}
+
+.file-upload-box:hover {
+  border-color: var(--accent-primary);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.file-upload-box .upload-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--text-muted);
+}
+
+.file-upload-box .file-input {
+  width: 100%;
+  max-width: 300px;
+  color: var(--text-primary);
+}
+
+.file-help-text {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 /* Card Body Content */
 .card-body {
   padding: 1rem;

@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize Defaults
   if (currentRoom === null) {
-    currentRoom = 'sync-default';
+    currentRoom = 'default';
     localStorage.setItem('syncpaste_room', currentRoom);
     setTimeout(() => { openModal(); }, 600);
   }
@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (isNaN(syncInterval)) {
-    syncInterval = 5000;
+    syncInterval = 0;
     localStorage.setItem('syncpaste_interval', syncInterval.toString());
   }
 
@@ -76,9 +76,9 @@ document.addEventListener('DOMContentLoaded', () => {
      ========================================================================== */
   
   function init() {
-    currentRoomDisplay.textContent = currentRoom;
+    currentRoomDisplay.textContent = currentRoom.toUpperCase();
     currentDeviceDisplay.textContent = currentDevice;
-    emptyRoomCodeDisplay.textContent = currentRoom;
+    emptyRoomCodeDisplay.textContent = currentRoom.toUpperCase();
     
     modalRoomInput.value = currentRoom;
     modalDeviceInput.value = currentDevice;
@@ -571,8 +571,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cleanVal !== currentRoom) {
       currentRoom = cleanVal;
       localStorage.setItem('syncpaste_room', currentRoom);
-      currentRoomDisplay.textContent = currentRoom;
-      emptyRoomCodeDisplay.textContent = currentRoom;
+      currentRoomDisplay.textContent = currentRoom.toUpperCase();
+      emptyRoomCodeDisplay.textContent = currentRoom.toUpperCase();
       
       showToast(`Switched to Room: ${currentRoom}`, 'success');
       fetchPastes(false);
